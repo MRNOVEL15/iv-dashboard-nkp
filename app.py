@@ -1,183 +1,150 @@
 import streamlit as st
 import pandas as pd
-import re
 
 # ==========================================
-# 1. ตั้งค่าหน้าเพจและ CSS (กลับไปใช้สไตล์เดิมของคุณ)
+# 1. ตั้งค่าหน้าเพจและ CSS 
 # ==========================================
-st.set_page_config(page_title="IV Dashboard Incompatibility | DIS Nakornping", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="IV Compatibility NKP", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #f8fafc; }
-    .header-banner { background-color: #004080; color: white; padding: 20px 30px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 4px solid #e11d48; }
-    .header-banner h1 { margin: 0; font-size: 1.8rem; font-weight: 700; color: white; }
-    .header-banner p { margin: 5px 0 0 0; font-size: 1rem; opacity: 0.9; }
-    .panel-box { background-color: white; padding: 25px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .section-title { color: #004080; font-weight: bold; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+    .stApp { background-color: #f4f7f9; }
+    .main .block-container { padding: 1rem 0.5rem; }
+
+    /* Header */
+    .header-banner { background-color: #004080; color: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-bottom: 5px solid #e11d48; text-align: center; }
     
-    /* ป้ายสถานะแจ้งเตือน */
-    .status-badge { display: block; padding: 15px 20px; font-weight: 800; font-size: 1.2rem; border-radius: 6px; margin-bottom: 2px; text-align: center; }
-    .status-Y { background-color: #ecfdf5; color: #059669; border: 2px solid #34d399; }
-    .status-X { background-color: #fef2f2; color: #dc2626; border: 2px solid #f87171; }
-    .status-C { background-color: #fefce8; color: #a16207; border: 2px solid #eab308; }
-    .status-ND { background-color: #f8fafc; color: #64748b; border: 2px solid #cbd5e1; }
+    /* กล่องแผงควบคุม */
+    .panel-box { background-color: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+    /* ป้ายสถานะ */
+    .status-badge { display: block; padding: 12px; font-weight: 800; font-size: 1.1rem; border-radius: 8px; text-align: center; margin-bottom: 2px; }
+    .bg-green { background-color: #ecfdf5; color: #059669; border: 2px solid #34d399; }
+    .bg-red { background-color: #fef2f2; color: #dc2626; border: 2px solid #f87171; }
+    .bg-yellow { background-color: #fefce8; color: #b45309; border: 2px solid #fbbf24; }
+    .bg-gray { background-color: #f8fafc; color: #64748b; border: 2px solid #cbd5e1; }
     
-    /* กล่องคำแนะนำที่ติดกับสถานะ */
-    .advice-container { padding: 15px 20px; border-radius: 0 0 6px 6px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; }
-    .advice-red { background-color: #fff1f2; border: 2px solid #f87171; border-top: none; color: #333; }
-    .advice-yellow { background-color: #fffbeb; border: 2px solid #fbbf24; border-top: none; color: #333; }
+    /* กล่องคำแนะนำ */
+    .advice-container { padding: 12px; border-radius: 0 0 8px 8px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 15px; border: 2px solid transparent; border-top: none; }
+    .advice-red { background-color: #fff1f2; border-color: #f87171; }
+    .advice-yellow { background-color: #fffbeb; border-color: #fbbf24; }
     
-    /* ปุ่มข้างขวา */
-    .quick-btn > button { width: 100%; text-align: left; padding: 10px 15px; background-color: white; border: 1px solid #cbd5e1; color: #0f172a; border-radius: 6px; transition: all 0.2s; margin-bottom: 8px; font-weight: 500; }
-    .quick-btn > button:hover { background-color: #f1f5f9; border-color: #94a3b8; transform: translateX(5px); }
-    
-    /* ปุ่มประมวลผลสีน้ำเงิน */
-    .analyze-btn > button { background-color: #004080; color: white; font-weight: bold; width: 100%; padding: 12px; border-radius: 6px; border: none; font-size: 1.1rem; margin-top: 15px; }
-    .analyze-btn > button:hover { background-color: #002b5e; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    /* ปุ่มวิเคราะห์สีน้ำเงิน */
+    .analyze-btn > button { background-color: #004080; color: white; font-weight: bold; width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 1.2rem; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
 # 2. ระบบจัดการข้อมูล (Google Sheet)
 # ==========================================
-if 'd1_key' not in st.session_state: st.session_state.d1_key = "Furosemide"
-if 'd2_key' not in st.session_state: st.session_state.d2_key = "Midazolam"
+if 'd1_key' not in st.session_state: st.session_state.d1_key = "Amiodarone"
+if 'd2_key' not in st.session_state: st.session_state.d2_key = "Heparin"
 if 'd3_key' not in st.session_state: st.session_state.d3_key = "- ไม่ระบุ -"
 
-def set_quick_drugs(d1, d2):
-    st.session_state.d1_key = d1
-    st.session_state.d2_key = d2
-    st.session_state.d3_key = "- ไม่ระบุ -"
+def set_quick(a, b):
+    st.session_state.d1_key, st.session_state.d2_key, st.session_state.d3_key = a, b, "- ไม่ระบุ -"
 
-@st.cache_data(ttl=30) 
+@st.cache_data(ttl=30)
 def load_data():
     try:
-        sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVvgXF-uMZbdJXUnFoc_EbGM_JygWW53SlhMBvk4q4s2obzEviIB4nvpRjGDg1X15hOLveeih9zzuB/pub?output=csv"
-        df = pd.read_csv(sheet_url, index_col=0)
+        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVvgXF-uMZbdJXUnFoc_EbGM_JygWW53SlhMBvk4q4s2obzEviIB4nvpRjGDg1X15hOLveeih9zzuB/pub?output=csv"
+        df = pd.read_csv(url, index_col=0)
         df.index = df.index.astype(str).str.strip()
         df.columns = df.columns.astype(str).str.strip()
         
-        # ข้อควรระวังประจำยา (ใช้ดึงมาแสดงใต้สีแดง/เหลืองอัตโนมัติ)
-        precautions = {
-            "Ceftriaxone": "เสี่ยงเกิดผลึกตะกอน (Calcium-Ceftriaxone precipitate) ทันที อาจอุดตันในหลอดเลือดและเป็นอันตรายถึงชีวิต ห้ามผสมร่วมกับสารละลายที่มีแคลเซียม",
-            "Calcium gluconate": "มีความเสี่ยงสูงในการเกิดตะกอนขุ่นและผลึกเมื่อสัมผัสกับยาปฏิชีวนะหลายชนิด",
-            "Furosemide": "ยามีฤทธิ์เป็นด่าง จะเกิดตะกอนขุ่นขาวทันทีเมื่อสัมผัสกับยาที่มีฤทธิ์เป็นกรด ห้ามให้ผ่าน Y-site เดียวกันถ้าไม่ Flush สาย",
-            "Midazolam": "ยามีฤทธิ์เป็นกรด จะตกตะกอนทันทีเมื่อเจอสารละลายที่เป็นด่าง",
-            "Norepinephrine": "ยาเสื่อมสภาพได้ง่ายในสารละลายที่มีความเป็นด่างจัด",
-            "Amphotericin B": "ยาไวต่อ Electrolyte สูงมาก ห้ามผสมกับ NSS เด็ดขาด ยาจะตกตะกอนทันที"
+        # ข้อควรระวังดึงจากระบบ
+        notes = {
+            "Ceftriaxone": "ห้ามผสมกับแคลเซียมเด็ดขาด เสี่ยงเกิดผลึกอุดตันในหลอดเลือดและเป็นอันตรายถึงชีวิต",
+            "Calcium gluconate": "เสี่ยงเกิดตะกอนสูงเมื่อสัมผัสกับยาปฏิชีวนะหลายชนิด",
+            "Furosemide": "เป็นด่างสูง เกิดตะกอนขุ่นขาวทันทีเมื่อเจอสารละลายกรด หากเลี่ยงไม่ได้ต้อง Flush สาย",
+            "Midazolam": "เป็นกรด ตกตะกอนทันทีเมื่อเจอสารละลายด่าง",
+            "Norepinephrine": "เสื่อมสภาพได้ง่ายในสารละลายที่มีความเป็นด่างจัด",
+            "Amphotericin B": "ห้ามผสม NSS เด็ดขาด ยาจะตกตะกอนทันที"
         }
-        return df, precautions, "success"
-    except Exception as e:
-        return None, {}, str(e)
+        return df, notes, "OK"
+    except: return None, {}, "Error"
 
-df, drug_precautions, status = load_data()
+df, drug_notes, status = load_data()
 
 # ==========================================
-# 3. UI Layout (โครงสร้างเดิมที่คุ้นเคย)
+# 3. ส่วนการทำงานหลัก
 # ==========================================
-st.markdown("""
-    <div class="header-banner">
-        <h1>🏥 IV Dashboard Incompatibility</h1>
-        <p>งานเภสัชสารสนเทศ (DIS) • โรงพยาบาลนครพิงค์</p>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="header-banner"><h1>🏥 IV Dashboard</h1><p>โรงพยาบาลนครพิงค์</p></div>', unsafe_allow_html=True)
 
 if df is not None:
-    col_main, col_side = st.columns([3, 1.2]) 
+    # --- ช่องเลือกยา ---
+    st.markdown('<div class="panel-box">', unsafe_allow_html=True)
+    all_drugs = sorted(list(set([str(d) for d in df.index.tolist() + df.columns.tolist() if "compat" not in str(d).lower() and str(d) != 'nan'])))
     
-    # --- แถบขวา: ปุ่มลัดคู่ยาที่พบบ่อย (กลับมาแล้ว!) ---
-    with col_side:
-        st.markdown('<div class="panel-box" style="background-color: #f8fafc;">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">⚡ คู่ยาที่พบบ่อย</div>', unsafe_allow_html=True)
-        pairs = [
-            ("Furosemide", "Midazolam"),
-            ("Ceftriaxone", "Calcium gluconate"),
-            ("Norepinephrine", "Sodium bicarbonate"),
-            ("Furosemide", "Potassium phosphate"),
-            ("Vancomycin", "Cefazolin"),
-            ("Norepinephrine", "Piperacillin-tazobactam")
-        ]
-        for d1, d2 in pairs:
-            st.markdown('<div class="quick-btn">', unsafe_allow_html=True)
-            st.button(f"🚨 {d1} + {d2}", on_click=set_quick_drugs, args=(d1, d2), key=f"q_{d1}_{d2}")
+    d1_sel = st.selectbox("💉 ยาตัวที่ 1", all_drugs, key="d1_key")
+    d2_sel = st.selectbox("💉 ยาตัวที่ 2", all_drugs, key="d2_key")
+    d3_sel = st.selectbox("💉 ยาตัวที่ 3 (ถ้ามี)", ["- ไม่ระบุ -"] + all_drugs, key="d3_key")
+    
+    st.markdown('<div class="analyze-btn">', unsafe_allow_html=True)
+    check = st.button("ประมวลผลความเข้ากันได้", use_container_width=True)
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    # --- ส่วนแสดงผลลัพธ์ ---
+    if check:
+        pairs = [(d1_sel, d2_sel)]
+        if d3_sel != "- ไม่ระบุ -":
+            pairs.extend([(d1_sel, d3_sel), (d2_sel, d3_sel)])
+        
+        st.markdown(f"### ผลการตรวจสอบ ({len(pairs)} คู่ยา)")
+        
+        for p1, p2 in pairs:
+            if p1 == p2: continue
+            
+            raw = ""
+            if p1 in df.index and p2 in df.columns: raw = str(df.loc[p1, p2])
+            elif p2 in df.index and p1 in df.columns: raw = str(df.loc[p2, p1])
+            
+            res, sheet_advice = (raw.split('|', 1) + [""])[:2] if '|' in raw else (raw, "")
+            res = res.strip().upper()
+
+            # --- ✅ จุดที่แก้ไข: หัวข้อยาเด่นๆ ไม่อิโมจิ ไม่สีขาว ใช้ Inline Style บังคับสีน้ำเงิน ---
+            # บังคับสี #001f3f (Navy) และพื้นหลัง #e2e8f0 (Gray-Blue)
+            header_html = f"""
+            <div style="background-color: #e2e8f0; color: #001f3f !important; padding: 15px; border-radius: 10px; margin-bottom: 10px; font-size: 1.4rem; font-weight: 900; text-align: center; border: 2px solid #004080; display: block; width: 100%;">
+                {p1} + {p2}
+            </div>
+            """
+            st.markdown(header_html, unsafe_allow_html=True)
+            
+            st.markdown('<div class="panel-box" style="margin-top:-5px; padding-top:10px;">', unsafe_allow_html=True)
+            
+            def render_route(label, codes, drug_names):
+                code = next((c for c in codes if c in res), "ND")
+                mapping = {
+                    "X": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
+                    "I": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
+                    "V": ("bg-yellow", "🟡 Uncertain/Variable Results", "advice-yellow"),
+                    "U": ("bg-green", "🟢 COMPATIBLE", ""),
+                    "Y": ("bg-green", "🟢 COMPATIBLE", ""),
+                    "C": ("bg-green", "🟢 COMPATIBLE", ""),
+                    "ND": ("bg-gray", "⚪ NO DATA", "")
+                }
+                cls, txt, adv_cls = mapping.get(code, ("bg-gray", "⚪ NO DATA", ""))
+
+                st.markdown(f'<div style="color:#475569; font-weight:bold; font-size:0.9rem; margin-bottom:5px;">{label}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="status-badge {cls}">{txt}</div>', unsafe_allow_html=True)
+                
+                if adv_cls:
+                    full_txt = f"<b>💡 คำแนะนำ:</b> {sheet_advice if sheet_advice else 'โปรดระวังการตกตะกอน'}"
+                    for dn in drug_names:
+                        if dn in drug_notes:
+                            full_txt += f"<br>⚠️ <b>[{dn}]:</b> {drug_notes[dn]}"
+                    st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
+
+            render_route("Y-Site Compatibility", ["X", "V", "Y"], [p1, p2])
+            st.markdown('<hr style="margin: 10px 0; border-color: #f1f5f9;">', unsafe_allow_html=True)
+            render_route("IV Admixture (ผสมถุง)", ["I", "U", "C"], [p1, p2])
+            
             st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- ส่วนกลาง: ตรวจสอบยา ---
-    with col_main:
-        st.markdown('<div class="panel-box">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">🔍 ตรวจสอบความเข้ากันได้ของยาฉีด (สูงสุด 3 ชนิด)</div>', unsafe_allow_html=True)
-        
-        all_drugs = sorted(list(set([str(d) for d in df.index.tolist() + df.columns.tolist() if "compatibility" not in str(d).lower() and str(d).lower() != 'nan'])))
-        
-        c1, c2, c3 = st.columns(3)
-        with c1: drug_a = st.selectbox("💉 ยาตัวที่ 1", all_drugs, key="d1_key")
-        with c2: drug_b = st.selectbox("💉 ยาตัวที่ 2", all_drugs, key="d2_key")
-        with c3: drug_c = st.selectbox("💉 ยาตัวที่ 3", ["- ไม่ระบุ -"] + all_drugs, key="d3_key")
-        
-        st.markdown('<div class="analyze-btn">', unsafe_allow_html=True)
-        check = st.button("ประมวลผลความเข้ากันได้", use_container_width=True)
-        st.markdown('</div></div>', unsafe_allow_html=True)
-        
-        if check:
-            def get_data(d1, d2):
-                def find(name, lst):
-                    for i in lst:
-                        if str(name).lower() == str(i).lower(): return i
-                    return None
-                r, c = find(d1, df.index), find(d2, df.columns)
-                if r and c and not pd.isna(df.loc[r, c]): return str(df.loc[r, c]).strip()
-                r2, c2 = find(d2, df.index), find(d1, df.columns)
-                if r2 and c2 and not pd.isna(df.loc[r2, c2]): return str(df.loc[r2, c2]).strip()
-                return ""
+    with st.expander("⚡ คู่ยาที่พบบ่อย (Quick Select)"):
+        q_pairs = [("Amiodarone", "Heparin"), ("Dobutamine", "Furosemide"), ("Norepinephrine", "Sodium bicarbonate")]
+        for a, b in q_pairs:
+            st.button(f"🚨 {a} + {b}", on_click=set_quick, args=(a, b), use_container_width=True, key=f"q_{a}_{b}")
 
-            pairs = [(drug_a, drug_b)]
-            if drug_c != "- ไม่ระบุ -":
-                pairs.extend([(drug_a, drug_c), (drug_b, drug_c)])
-            
-            st.markdown(f"### 📊 ผลการตรวจสอบ ({len(pairs)} คู่ยา)")
-            
-            for d1, d2 in pairs:
-                if d1 == d2: continue
-                val = get_data(d1, d2)
-                res, advice = val.split('|', 1) if '|' in val else (val.strip().upper(), "")
-                
-                st.markdown(f'<div class="panel-box" style="padding:20px; border-left:5px solid #004080;">', unsafe_allow_html=True)
-                st.markdown(f'**⚔️ {d1} + {d2}**')
-                
-                # ฟังก์ชันสร้าง Badge และคำแนะนำรวม
-                def render_result(label, codes_to_find, drug_names):
-                    status_ui, advice_class = "", ""
-                    found_code = ""
-                    for c in codes_to_find:
-                        if c in res: found_code = c; break
-                    
-                    if found_code in ['X', 'I']:
-                        status_ui = f'<div class="status-badge status-X">🔴 INCOMPATIBLE ({label})</div>'
-                        advice_class = "advice-red"
-                    elif found_code in ['V', 'U']:
-                        status_ui = f'<div class="status-badge status-C">🟡 Uncertain/Variable Results ({label})</div>'
-                        advice_class = "advice-yellow"
-                    elif found_code in ['Y', 'C']:
-                        status_ui = f'<div class="status-badge status-Y">🟢 COMPATIBLE ({label})</div>'
-                    else:
-                        status_ui = f'<div class="status-badge status-ND">⚪ NO DATA ({label})</div>'
-                    
-                    st.markdown(status_ui, unsafe_allow_html=True)
-                    
-                    # ถ้าเป็นแดงหรือเหลือง ให้ดึงคำแนะนำจาก Sheet + ข้อควรระวังประจำยา มาโชว์
-                    if advice_class:
-                        combined_advice = f"<b>💡 คำแนะนำ:</b> {advice if advice else 'ห้ามผสมหรือให้ร่วมกันโดยเด็ดขาด'}"
-                        for dname in drug_names:
-                            if dname in drug_precautions:
-                                combined_advice += f"<br>⚠️ <b>[{dname}]:</b> {drug_precautions[dname]}"
-                        
-                        st.markdown(f'<div class="advice-container {advice_class}">{combined_advice}</div>', unsafe_allow_html=True)
-
-                # แยกแสดงผล Y-Site และ Admixture
-                render_result("Y-Site Compatibility", ['X', 'V', 'Y'], [d1, d2])
-                render_result("IV Admixture", ['I', 'U', 'C'], [d1, d2])
-                st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<p style="text-align:center; color:#64748b; margin-top:30px;">พัฒนาโดยงานเภสัชสารสนเทศ โรงพยาบาลนครพิงค์ | 053-999200 ต่อ 2279</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center; color:#94a3b8; font-size:0.8rem; margin-top:20px;">งานเภสัชสารสนเทศ โรงพยาบาลนครพิงค์</p>', unsafe_allow_html=True)
