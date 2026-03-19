@@ -24,23 +24,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. โหลดข้อมูลแบบ Real-time
+# 2. โหลดข้อมูลแบบ Real-time พร้อมจับ Error
 # ==========================================
-@st.cache_data(ttl=15) # อัปเดตข้อมูลทุก 15 วินาที
+@st.cache_data(ttl=15)
 def load_data():
     try:
         url = "https://docs.google.com/spreadsheets/d/1IW7mfdOuZ84BskIWPIcgGwueUuq4g5u-4YC7ghIREX4/export?format=csv&gid=2107829411"
         df = pd.read_csv(url, index_col=0)
         df.index = df.index.astype(str).str.strip()
         df.columns = df.columns.astype(str).str.strip()
-        return df
-    except:
-        return None
+        return df, "Success"
+    except Exception as e:
+        return None, str(e)
 
-df = load_data()
+df, status_msg = load_data()
 
 # ==========================================
-# 3. ฟังก์ชันค้นหาอัจฉริยะ (กัน Error & สลับแกนอัตโนมัติ)
+# 3. ฟังก์ชันค้นหาอัจฉริยะ
 # ==========================================
 def get_val_robust(df, d1, d2):
     def find_match(name, target_list):
@@ -67,7 +67,6 @@ def get_val_robust(df, d1, d2):
 st.markdown('<div class="header-banner"><h1>🏥 IV Compatibility Dashboard</h1><p>ตรวจสอบความเข้ากันได้ของยาฉีด | งานเภสัชสารสนเทศ โรงพยาบาลนครพิงค์</p></div>', unsafe_allow_html=True)
 
 if df is not None:
-    # กรองรายชื่อยาให้สะอาด
     clean_drugs = sorted([str(d).strip() for d in df.index.tolist() if "compatibility" not in str(d).lower() and str(d).lower() != 'nan' and str(d).strip() != ''])
     
     st.markdown('<div class="panel-box">', unsafe_allow_html=True)
@@ -87,37 +86,31 @@ if df is not None:
             pairs.append((drug_b, drug_c))
             
         st.markdown(f"### 📊 ผลการตรวจสอบ ({len(pairs)} คู่ยา)")
-        
         for d1, d2 in pairs:
             if d1 == d2: continue
             
             st.markdown(f'<div class="panel-box"><div class="pair-title">⚔️ {d1} + {d2}</div>', unsafe_allow_html=True)
             val = get_val_robust(df, d1, d2)
             
-            # ระบบแยกสถานะกับคำแนะนำ
             if '|' in val:
                 parts = val.split('|', 1)
-                res = parts[0].strip().upper()
-                advice = parts[1].strip()
+                res, advice = parts[0].strip().upper(), parts[1].strip()
             else:
-                res = val.strip().upper()
-                advice = ""
+                res, advice = val.strip().upper(), ""
             
-            # โชว์ป้ายสถานะหลัก
             if 'X' in res: st.markdown('<div class="status-badge status-X">❌ INCOMPATIBLE (ห้ามให้ร่วมกัน)</div>', unsafe_allow_html=True)
             elif 'Y' in res: st.markdown('<div class="status-badge status-Y">✅ COMPATIBLE (ให้ร่วมกันได้)</div>', unsafe_allow_html=True)
             elif any(c in res for c in ['C', 'U', 'V', 'I']): st.markdown('<div class="status-badge status-C">🟡 CAUTION (มีเงื่อนไข / ผลไม่แน่นอน)</div>', unsafe_allow_html=True)
             else: st.markdown('<div class="status-badge status-ND">⚪ NO DATA (ยังไม่มีข้อมูลในระบบ)</div>', unsafe_allow_html=True)
             
-            # โชว์กล่องคำแนะนำ (รวม Y-site และ Admixture)
             if advice: 
-                # ทำให้คำว่า Y-Site และ Admixture เป็นตัวหนาอัตโนมัติ (ถ้ามีการพิมพ์มา)
                 advice = advice.replace("Y-site", "**Y-site**").replace("Y-Site", "**Y-Site**").replace("Admixture", "**Admixture**").replace("Admix", "**Admixture**")
                 st.markdown(f'<div class="advice-box">💡 <b>คำแนะนำจาก DIS:</b><br>{advice}</div>', unsafe_allow_html=True)
-                
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.expander("🛠 สำหรับเจ้าหน้าที่: เช็คสถานะฐานข้อมูล"):
-        st.write(f"✅ เชื่อมต่อสำเร็จ! พบรายการยา/สารน้ำทั้งหมด {len(clean_drugs)} รายการ")
+else:
+    st.error("❌ ไม่สามารถดึงข้อมูลจาก Google Sheets ได้")
+    st.warning(f"สาเหตุ: {status_msg}")
+    st.info("💡 วิธีแก้: กรุณาเข้าไปที่ตาราง Google Sheets ของคุณ -> เลือกเมนู ไฟล์ (File) -> แชร์ (Share) -> เผยแพร่ไปยังเว็บ (Publish to web) แล้วกดปุ่ม 'เผยแพร่'")
 
 st.markdown('<p style="text-align:center; color:#64748b; margin-top:40px;">ติดต่อหน่วยงานเภสัชกรรม 053-999200 ต่อ 2279</p>', unsafe_allow_html=True)
