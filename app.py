@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
+import itertools
+import re
 
 # ==========================================
-# 1. ตั้งค่าหน้าเพจและ CSS (Dark Mode Resistant)
+# 1. ตั้งค่าหน้าเพจและ CSS (สู้ Dark Mode)
 # ==========================================
 st.set_page_config(page_title="IV Compatibility Dashboard | DIS Nakornping", layout="wide", initial_sidebar_state="collapsed")
 
@@ -47,14 +49,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. ระบบจัดการข้อมูล (Google Sheet)
+# 2. ระบบจัดการข้อมูลและตั้งค่าเริ่มต้น
 # ==========================================
-if 'd1_key' not in st.session_state: st.session_state.d1_key = "Amiodarone"
-if 'd2_key' not in st.session_state: st.session_state.d2_key = "Heparin sodium"
-if 'd3_key' not in st.session_state: st.session_state.d3_key = "- ไม่ระบุ -"
+PLACEHOLDER = "-- เลือกยาฉีด --"
+FLUID_PLACEHOLDER = "-- ไม่ระบุสารน้ำ --"
 
-def set_quick(a, b):
-    st.session_state.d1_key, st.session_state.d2_key, st.session_state.d3_key = a, b, "- ไม่ระบุ -"
+# 🛠️ Mapping สารน้ำ: สิ่งที่แสดงให้เห็นในแอป (ซ้าย) : สิ่งที่ดึงไปค้นหาใน Google Sheet (ขวา)
+FLUID_MAPPING = {
+    FLUID_PLACEHOLDER: FLUID_PLACEHOLDER,
+    "Dextrose/water (D5W)": "Dextrose/water",
+    "Dextrose/NSS (D5/NSS)": "Dextrose/nss",
+    "Normal saline (NSS)": "Normal saline",
+    "Lactated ringer (LRI)": "Lactated ringer"
+}
+
+if 'd1_key' not in st.session_state: st.session_state.d1_key = PLACEHOLDER
+if 'd2_key' not in st.session_state: st.session_state.d2_key = PLACEHOLDER
+if 'd3_key' not in st.session_state: st.session_state.d3_key = PLACEHOLDER
+if 'd4_key' not in st.session_state: st.session_state.d4_key = PLACEHOLDER
+if 'd5_key' not in st.session_state: st.session_state.d5_key = FLUID_PLACEHOLDER
+
+def set_quick(a, b, fluid=FLUID_PLACEHOLDER):
+    st.session_state.d1_key = a
+    st.session_state.d2_key = b
+    st.session_state.d3_key = PLACEHOLDER
+    st.session_state.d4_key = PLACEHOLDER
+    st.session_state.d5_key = fluid
 
 @st.cache_data(ttl=30)
 def load_data():
@@ -63,8 +83,9 @@ def load_data():
         main_url = "https://docs.google.com/spreadsheets/d/1IW7mfdOuZ84BskIWPIcgGwueUuq4g5u-4YC7ghIREX4/export?format=csv&gid=2107829411"
         df = pd.read_csv(main_url, index_col=0)
         
-        df.index = df.index.astype(str).str.strip().str.capitalize()
-        df.columns = df.columns.astype(str).str.strip().str.capitalize()
+        # คลีนชื่อยา: ยุบช่องว่าง ลบช่องว่างหัวท้าย และทำตัวพิมพ์ใหญ่เฉพาะตัวแรก
+        df.index = df.index.astype(str).str.replace(r'\s+', ' ', regex=True).str.strip().str.capitalize()
+        df.columns = df.columns.astype(str).str.replace(r'\s+', ' ', regex=True).str.strip().str.capitalize()
         
         # 2. ดึงข้อมูลตารางข้อควรระวัง (Sheet 2) แยกเป็น เหลือง และ แดง
         notes = {}
@@ -73,22 +94,18 @@ def load_data():
             df_notes = pd.read_csv(notes_url)
             
             for _, row in df_notes.iterrows():
-                drug_name = str(row.iloc[0]).strip().capitalize()
-                
-                # เช็คว่ามีคอลัมน์ B (เหลือง) และ C (แดง) หรือไม่ เพื่อป้องกัน Error
+                drug_name = re.sub(r'\s+', ' ', str(row.iloc[0])).strip().capitalize()
                 yellow_note = str(row.iloc[1]).strip() if df_notes.shape[1] > 1 else "nan"
                 red_note = str(row.iloc[2]).strip() if df_notes.shape[1] > 2 else "nan"
                 
                 if pd.notna(drug_name) and drug_name.lower() != 'nan':
                     notes[drug_name] = {}
-                    
                     if pd.notna(yellow_note) and yellow_note.lower() != 'nan':
                         notes[drug_name]['yellow'] = yellow_note
-                        
                     if pd.notna(red_note) and red_note.lower() != 'nan':
                         notes[drug_name]['red'] = red_note
         except Exception as sheet_err:
-            print(f"Notes warning: {sheet_err}") # ไม่ให้แอปพังถ้า Sheet 2 ยังไม่ได้ทำโครงสร้างนี้
+            pass
             
         return df, notes, "OK"
     except Exception as e:
@@ -115,7 +132,7 @@ st.markdown("""
         </div>
         <div class="legend-item">
             <div class="legend-color bg-yellow"></div>
-            <span class="legend-text"><b>🟡 สีเหลือง (Uncertain):</b> ข้อมูลไม่ชัดเจน มีเงื่อนไขเฉพาะ หรือผลลัพธ์แปรผันตามความเข้มข้น โปรดระมัดระวัง</span>
+            <span class="legend-text"><b>🟡 สีเหลือง (Variable result):</b> มีเงื่อนไขเฉพาะทำให้ผลไม่แน่นอน (แปรผันตามความเข้มข้น, pH หรือเวลา)</span>
         </div>
         <div class="legend-item">
             <div class="legend-color bg-green"></div>
@@ -127,78 +144,123 @@ st.markdown("""
 if df is not None:
     st.markdown('<div class="panel-box">', unsafe_allow_html=True)
     
-    all_drugs = sorted(list(set([str(d) for d in df.index.tolist() + df.columns.tolist() if "compat" not in str(d).lower() and str(d).lower() != 'nan'])))
+    # 🛠️ ดึงรายชื่อสารน้ำออกมาเก็บไว้ เพื่อเอาไปคัดออกจาก Dropdown ของยาฉีด
+    raw_fluids_to_exclude = [v for k, v in FLUID_MAPPING.items() if v != FLUID_PLACEHOLDER]
     
-    d1_sel = st.selectbox("💉 ยาตัวที่ 1", all_drugs, key="d1_key")
-    d2_sel = st.selectbox("💉 ยาตัวที่ 2", all_drugs, key="d2_key")
-    d3_sel = st.selectbox("💉 ยาตัวที่ 3 (ถ้ามี)", ["- ไม่ระบุ -"] + all_drugs, key="d3_key")
+    # สร้างรายการยาฉีด (คัดพวกสารน้ำและคำว่า nan ออกไป)
+    drug_list = sorted(list(set([
+        str(d) for d in df.index.tolist() + df.columns.tolist() 
+        if "compat" not in str(d).lower() 
+        and str(d).lower() != 'nan'
+        and str(d) not in raw_fluids_to_exclude
+    ])))
+    
+    all_drugs = [PLACEHOLDER] + drug_list
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        d1_sel = st.selectbox("💉 ยาฉีด ตัวที่ 1", all_drugs, key="d1_key")
+        d2_sel = st.selectbox("💉 ยาฉีด ตัวที่ 2 (ถ้าผสมร่วมกัน)", all_drugs, key="d2_key")
+        d3_sel = st.selectbox("💉 ยาฉีด ตัวที่ 3 (ถ้าผสมร่วมกัน)", all_drugs, key="d3_key")
+    with col2:
+        d4_sel = st.selectbox("💉 ยาฉีด ตัวที่ 4 (ถ้าผสมร่วมกัน)", all_drugs, key="d4_key")
+        # 🛠️ Dropdown สารน้ำ จะโชว์แค่ 4 ตัวที่กำหนดไว้ใน FLUID_MAPPING เท่านั้น
+        d5_sel = st.selectbox("💧 สารน้ำหลัก / สารละลาย (Base Solution)", list(FLUID_MAPPING.keys()), key="d5_key")
     
     st.markdown('<div class="analyze-btn">', unsafe_allow_html=True)
     check = st.button("ประมวลผลความเข้ากันได้", use_container_width=True)
     st.markdown('</div></div>', unsafe_allow_html=True)
 
     if check:
-        pairs = [(d1_sel, d2_sel)]
-        if d3_sel != "- ไม่ระบุ -":
-            pairs.extend([(d1_sel, d3_sel), (d2_sel, d3_sel)])
+        # เก็บรายชื่อยาที่ผู้ใช้เลือก (ตัด Placeholder ออก)
+        selected_drugs = [d for d in [d1_sel, d2_sel, d3_sel, d4_sel] if d != PLACEHOLDER]
         
-        for p1, p2 in pairs:
-            if p1 == p2: continue
+        # ถ้ามีการเลือกสารน้ำ ให้แปลงกลับเป็นชื่อจริงใน Sheet แล้วเอาไปต่อท้าย selected_drugs
+        if d5_sel != FLUID_PLACEHOLDER:
+            selected_drugs.append(FLUID_MAPPING[d5_sel])
+        
+        if len(selected_drugs) < 2:
+            st.warning("⚠️ กรุณาเลือก ยาฉีด หรือ สารน้ำ อย่างน้อย 2 ชนิด เพื่อตรวจสอบความเข้ากันได้")
+        else:
+            # จับคู่แบบพบกันหมด
+            pairs = list(itertools.combinations(selected_drugs, 2))
             
-            raw = ""
-            if p1 in df.index and p2 in df.columns: raw = str(df.loc[p1, p2])
-            elif p2 in df.index and p1 in df.columns: raw = str(df.loc[p2, p1])
+            st.markdown(f"### 📊 ผลการตรวจสอบทั้งหมด ({len(pairs)} คู่)")
             
-            res, sheet_advice = (raw.split('|', 1) + [""])[:2] if '|' in raw else (raw, "")
-            res = res.strip().upper()
-            sheet_advice = sheet_advice.strip()
-
-            st.markdown(f'<div class="pair-title-box">{p1} + {p2}</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="panel-box" style="margin-top:-10px;">', unsafe_allow_html=True)
-            
-            def render_route(label, codes, drug_names):
-                code = next((c for c in codes if c in res), "ND")
-                mapping = {
-                    "X": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
-                    "I": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
-                    "V": ("bg-yellow", "🟡 UNCERTAIN", "advice-yellow"),
-                    "U": ("bg-yellow", "🟡 UNCERTAIN", "advice-yellow"),
-                    "Y": ("bg-green", "🟢 COMPATIBLE", ""),
-                    "C": ("bg-green", "🟢 COMPATIBLE", ""),
-                    "ND": ("bg-gray", "⚪ NO DATA", "")
-                }
-                cls, txt, adv_cls = mapping.get(code, ("bg-gray", "⚪ NO DATA", ""))
-
-                st.markdown(f'<div style="color:#475569; font-weight:bold; font-size:0.95rem; margin-bottom:5px;">{label}</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="status-badge {cls}">{txt}</div>', unsafe_allow_html=True)
+            for p1, p2 in pairs:
+                # ระบบค้นหาสลับฝั่ง A+B และ B+A
+                raw = ""
+                if p1 in df.index and p2 in df.columns and pd.notna(df.loc[p1, p2]) and str(df.loc[p1, p2]).strip().lower() != 'nan':
+                    raw = str(df.loc[p1, p2])
                 
-                # --- จัดการดึงคำแนะนำแยกตามสี (จาก Sheet 2) ---
-                if adv_cls == "advice-red":
-                    full_txt = f"<b>💡 คำแนะนำ:</b> {sheet_advice if sheet_advice else 'ยาเข้ากันไม่ได้ ห้ามผสมกันหรือห้ามให้ร่วมกันโดยเด็ดขาด'}"
-                    for dn in drug_names:
-                        # เช็คว่ามียาตัวนี้ใน Sheet 2 และมีคำเตือนในคอลัมน์ C (red) หรือไม่
-                        if dn in drug_notes and 'red' in drug_notes[dn]:
-                            full_txt += f"<br>⚠️ <b>[{dn}]:</b> {drug_notes[dn]['red']}"
-                    st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
+                if raw == "" and p2 in df.index and p1 in df.columns and pd.notna(df.loc[p2, p1]) and str(df.loc[p2, p1]).strip().lower() != 'nan':
+                    raw = str(df.loc[p2, p1])
                 
-                elif adv_cls == "advice-yellow":
-                    full_txt = f"<b>💡 คำแนะนำ:</b> {sheet_advice if sheet_advice else 'ข้อมูลแปรผันตามเงื่อนไข โปรดระมัดระวัง'}"
-                    for dn in drug_names:
-                        # เช็คว่ามียาตัวนี้ใน Sheet 2 และมีคำเตือนในคอลัมน์ B (yellow) หรือไม่
-                        if dn in drug_notes and 'yellow' in drug_notes[dn]:
-                            full_txt += f"<br>⚠️ <b>[{dn}]:</b> {drug_notes[dn]['yellow']}"
-                    st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
+                res, sheet_advice = (raw.split('|', 1) + [""])[:2] if '|' in raw else (raw, "")
+                res = res.strip().upper()
+                sheet_advice = sheet_advice.strip()
 
-            render_route("Y-Site Compatibility", ["X", "V", "Y"], [p1, p2])
-            st.markdown('<hr style="margin: 15px 0; border-color: #f1f5f9;">', unsafe_allow_html=True)
-            render_route("IV Admixture (ผสมถุง)", ["I", "U", "C"], [p1, p2])
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="pair-title-box">{p1} + {p2}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="panel-box" style="margin-top:-10px;">', unsafe_allow_html=True)
+                
+                def render_route(label, codes, drug_names):
+                    code = next((c for c in codes if c in res), "ND")
+                    mapping = {
+                        "X": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
+                        "I": ("bg-red", "🔴 INCOMPATIBLE", "advice-red"),
+                        "V": ("bg-yellow", "🟡 Variable result (มีเงื่อนไขเฉพาะทำให้ผลไม่แน่นอน)", "advice-yellow"),
+                        "U": ("bg-yellow", "🟡 Variable result (มีเงื่อนไขเฉพาะทำให้ผลไม่แน่นอน)", "advice-yellow"),
+                        "Y": ("bg-green", "🟢 COMPATIBLE", ""),
+                        "C": ("bg-green", "🟢 COMPATIBLE", ""),
+                        "ND": ("bg-gray", "⚪ NO DATA", "")
+                    }
+                    cls, txt, adv_cls = mapping.get(code, ("bg-gray", "⚪ NO DATA", ""))
+
+                    st.markdown(f'<div style="color:#475569; font-weight:bold; font-size:0.95rem; margin-bottom:5px;">{label}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="status-badge {cls}">{txt}</div>', unsafe_allow_html=True)
+                    
+                    if adv_cls == "advice-red":
+                        full_txt = f"<b>💡 คำแนะนำ:</b> {sheet_advice if sheet_advice else 'ยาเข้ากันไม่ได้ ห้ามผสมกันหรือห้ามให้ร่วมกันโดยเด็ดขาด'}"
+                        for dn in drug_names:
+                            if dn in drug_notes and 'red' in drug_notes[dn]:
+                                full_txt += f"<br>⚠️ <b>[{dn}]:</b> {drug_notes[dn]['red']}"
+                        st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
+                    
+                    elif adv_cls == "advice-yellow":
+                        default_yellow_msg = "โปรดตรวจสอบเงื่อนไขเฉพาะ: ความเข้มข้น, ค่าความเป็นกรด-ด่าง (pH), หรือระยะเวลาในการให้ยา"
+                        full_txt = f"<b>💡 คำแนะนำ (บังคับอ่าน):</b> {sheet_advice if sheet_advice else default_yellow_msg}"
+                        
+                        for dn in drug_names:
+                            if dn in drug_notes and 'yellow' in drug_notes[dn]:
+                                full_txt += f"<br>⚠️ <b>[{dn}]:</b> {drug_notes[dn]['yellow']}"
+                        st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
+
+                render_route("Y-Site Compatibility", ["X", "V", "Y"], [p1, p2])
+                st.markdown('<hr style="margin: 15px 0; border-color: #f1f5f9;">', unsafe_allow_html=True)
+                render_route("IV Admixture (ผสมถุง)", ["I", "U", "C"], [p1, p2])
+                st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("⚡ คู่ยาที่พบบ่อย (Quick Select)"):
-        q_pairs = [("Amiodarone", "Heparin sodium"), ("Dobutamine", "Furosemide"), ("Norepinephrine", "Sodium bicarbonate")]
-        for a, b in q_pairs:
-            st.button(f"🚨 {a} + {b}", on_click=set_quick, args=(a, b), use_container_width=True, key=f"q_{a}_{b}")
+        # เซ็ตคู่ยาพบบ่อย โดยกำหนดค่าตัวแปรให้ตรงกับ Dropdown สารน้ำ
+        st.button("🚨 Calcium gluconate + Sodium bicarbonate", 
+                  on_click=set_quick, 
+                  args=("Calcium gluconate", "Sodium bicarbonate", FLUID_PLACEHOLDER), 
+                  use_container_width=True)
+        
+        st.button("🚨 Midazolam + Furosemide", 
+                  on_click=set_quick, 
+                  args=("Midazolam", "Furosemide", FLUID_PLACEHOLDER), 
+                  use_container_width=True)
+        
+        # คู่ที่มีสารน้ำ ระบบจะส่งค่า "Dextrose/water (D5W)" เข้าไปล็อคในช่องสารน้ำให้เลย
+        st.button("🚨 Phenytoin + D5W", 
+                  on_click=set_quick, 
+                  args=("Phenytoin", PLACEHOLDER, "Dextrose/water (D5W)"), 
+                  use_container_width=True)
+        
+        st.button("🚨 Amiodarone + Heparin sodium", 
+                  on_click=set_quick, 
+                  args=("Amiodarone", "Heparin sodium", FLUID_PLACEHOLDER), 
+                  use_container_width=True)
 
 st.markdown('<p style="text-align:center; color:#94a3b8; font-size:0.8rem; margin-top:20px;">งานเภสัชสนเทศ (DIS) โรงพยาบาลนครพิงค์</p>', unsafe_allow_html=True)
