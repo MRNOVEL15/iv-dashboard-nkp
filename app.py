@@ -235,7 +235,7 @@ if df is not None:
                     
                     elif adv_cls == "advice-yellow":
                         default_yellow_msg = "โปรดตรวจสอบเงื่อนไขเฉพาะ: ความเข้มข้น, ค่าความเป็นกรด-ด่าง (pH), หรือระยะเวลาในการให้ยา"
-                        full_txt = f"<b>💡 คำแนะนำ (บังคับอ่าน):</b> {sheet_advice if sheet_advice else default_yellow_msg}"
+                        full_txt = f"<b>💡 คำแนะนำ :</b> {sheet_advice if sheet_advice else default_yellow_msg}"
                         
                         for dn in drug_names:
                             if dn in drug_notes and 'yellow' in drug_notes[dn]:
