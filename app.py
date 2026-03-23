@@ -4,7 +4,7 @@ import itertools
 import re
 
 # ==========================================
-# 1. ตั้งค่าหน้าเพจและ CSS (สู้ Dark Mode)
+# 1. ตั้งค่าหน้าเพจและ CSS (สู้ Dark Mode + ปรับปุ่มให้เด่นขึ้น)
 # ==========================================
 st.set_page_config(page_title="IV Compatibility Dashboard | DIS Nakornping", layout="wide", initial_sidebar_state="collapsed")
 
@@ -43,8 +43,25 @@ st.markdown("""
     .advice-red { background-color: #fff1f2 !important; border-color: #f87171 !important; color: #0f172a !important; }
     .advice-yellow { background-color: #fffbeb !important; border-color: #fbbf24 !important; color: #0f172a !important; }
     
-    /* ปุ่มวิเคราะห์ */
-    .analyze-btn > button { background-color: #004080 !important; color: white !important; font-weight: bold; width: 100%; padding: 15px; border-radius: 10px; border: none; font-size: 1.2rem; margin-top: 10px; }
+    /* 🛠️ ปุ่มวิเคราะห์ (ปรับให้มีมิติ มองหาง่ายขึ้น แต่ไม่รก) */
+    .analyze-btn > button { 
+        background-color: #004080 !important; 
+        color: white !important; 
+        font-weight: bold; 
+        width: 100%; 
+        padding: 16px; 
+        border-radius: 10px; 
+        border: none; 
+        font-size: 1.25rem; 
+        margin-top: 15px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15); /* เพิ่มเงาบางๆ */
+        transition: all 0.2s ease-in-out; 
+    }
+    .analyze-btn > button:hover {
+        background-color: #002b5e !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.2); /* เงาชัดขึ้นตอนชี้เมาส์ */
+        transform: translateY(-2px); /* ปุ่มลอยขึ้นนิดๆ */
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -54,7 +71,6 @@ st.markdown("""
 PLACEHOLDER = "-- เลือกยาฉีด --"
 FLUID_PLACEHOLDER = "-- ไม่ระบุสารน้ำ --"
 
-# 🛠️ Mapping สารน้ำ: สิ่งที่แสดงให้เห็นในแอป (ซ้าย) : สิ่งที่ดึงไปค้นหาใน Google Sheet (ขวา)
 FLUID_MAPPING = {
     FLUID_PLACEHOLDER: FLUID_PLACEHOLDER,
     "Dextrose/water (D5W)": "Dextrose/water",
@@ -79,15 +95,12 @@ def set_quick(a, b, fluid=FLUID_PLACEHOLDER):
 @st.cache_data(ttl=30)
 def load_data():
     try:
-        # 1. ดึงข้อมูลตารางหลัก (Grid)
         main_url = "https://docs.google.com/spreadsheets/d/1IW7mfdOuZ84BskIWPIcgGwueUuq4g5u-4YC7ghIREX4/export?format=csv&gid=2107829411"
         df = pd.read_csv(main_url, index_col=0)
         
-        # คลีนชื่อยา: ยุบช่องว่าง ลบช่องว่างหัวท้าย และทำตัวพิมพ์ใหญ่เฉพาะตัวแรก
         df.index = df.index.astype(str).str.replace(r'\s+', ' ', regex=True).str.strip().str.capitalize()
         df.columns = df.columns.astype(str).str.replace(r'\s+', ' ', regex=True).str.strip().str.capitalize()
         
-        # 2. ดึงข้อมูลตารางข้อควรระวัง (Sheet 2) แยกเป็น เหลือง และ แดง
         notes = {}
         try:
             notes_url = "https://docs.google.com/spreadsheets/d/1IW7mfdOuZ84BskIWPIcgGwueUuq4g5u-4YC7ghIREX4/export?format=csv&gid=1919782501"
@@ -144,10 +157,8 @@ st.markdown("""
 if df is not None:
     st.markdown('<div class="panel-box">', unsafe_allow_html=True)
     
-    # 🛠️ ดึงรายชื่อสารน้ำออกมาเก็บไว้ เพื่อเอาไปคัดออกจาก Dropdown ของยาฉีด
     raw_fluids_to_exclude = [v for k, v in FLUID_MAPPING.items() if v != FLUID_PLACEHOLDER]
     
-    # สร้างรายการยาฉีด (คัดพวกสารน้ำและคำว่า nan ออกไป)
     drug_list = sorted(list(set([
         str(d) for d in df.index.tolist() + df.columns.tolist() 
         if "compat" not in str(d).lower() 
@@ -164,31 +175,27 @@ if df is not None:
         d3_sel = st.selectbox("💉 ยาฉีด ตัวที่ 3 (ถ้าผสมร่วมกัน)", all_drugs, key="d3_key")
     with col2:
         d4_sel = st.selectbox("💉 ยาฉีด ตัวที่ 4 (ถ้าผสมร่วมกัน)", all_drugs, key="d4_key")
-        # 🛠️ Dropdown สารน้ำ จะโชว์แค่ 4 ตัวที่กำหนดไว้ใน FLUID_MAPPING เท่านั้น
         d5_sel = st.selectbox("💧 สารน้ำหลัก / สารละลาย (Base Solution)", list(FLUID_MAPPING.keys()), key="d5_key")
     
     st.markdown('<div class="analyze-btn">', unsafe_allow_html=True)
-    check = st.button("ประมวลผลความเข้ากันได้", use_container_width=True)
+    # 🛠️ เปลี่ยนข้อความและใส่ไอคอนให้ปุ่มดูชัดเจนขึ้น
+    check = st.button("🔍 ประมวลผลความเข้ากันได้", use_container_width=True)
     st.markdown('</div></div>', unsafe_allow_html=True)
 
     if check:
-        # เก็บรายชื่อยาที่ผู้ใช้เลือก (ตัด Placeholder ออก)
         selected_drugs = [d for d in [d1_sel, d2_sel, d3_sel, d4_sel] if d != PLACEHOLDER]
         
-        # ถ้ามีการเลือกสารน้ำ ให้แปลงกลับเป็นชื่อจริงใน Sheet แล้วเอาไปต่อท้าย selected_drugs
         if d5_sel != FLUID_PLACEHOLDER:
             selected_drugs.append(FLUID_MAPPING[d5_sel])
         
         if len(selected_drugs) < 2:
             st.warning("⚠️ กรุณาเลือก ยาฉีด หรือ สารน้ำ อย่างน้อย 2 ชนิด เพื่อตรวจสอบความเข้ากันได้")
         else:
-            # จับคู่แบบพบกันหมด
             pairs = list(itertools.combinations(selected_drugs, 2))
             
             st.markdown(f"### 📊 ผลการตรวจสอบทั้งหมด ({len(pairs)} คู่)")
             
             for p1, p2 in pairs:
-                # ระบบค้นหาสลับฝั่ง A+B และ B+A
                 raw = ""
                 if p1 in df.index and p2 in df.columns and pd.notna(df.loc[p1, p2]) and str(df.loc[p1, p2]).strip().lower() != 'nan':
                     raw = str(df.loc[p1, p2])
@@ -241,7 +248,6 @@ if df is not None:
                 st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("⚡ คู่ยาที่พบบ่อย (Quick Select)"):
-        # เซ็ตคู่ยาพบบ่อย โดยกำหนดค่าตัวแปรให้ตรงกับ Dropdown สารน้ำ
         st.button("🚨 Calcium gluconate + Sodium bicarbonate", 
                   on_click=set_quick, 
                   args=("Calcium gluconate", "Sodium bicarbonate", FLUID_PLACEHOLDER), 
@@ -252,7 +258,6 @@ if df is not None:
                   args=("Midazolam", "Furosemide", FLUID_PLACEHOLDER), 
                   use_container_width=True)
         
-        # คู่ที่มีสารน้ำ ระบบจะส่งค่า "Dextrose/water (D5W)" เข้าไปล็อคในช่องสารน้ำให้เลย
         st.button("🚨 Phenytoin + D5W", 
                   on_click=set_quick, 
                   args=("Phenytoin", PLACEHOLDER, "Dextrose/water (D5W)"), 
