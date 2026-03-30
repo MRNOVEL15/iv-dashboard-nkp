@@ -4,7 +4,7 @@ import itertools
 import re
 
 # ==========================================
-# 1. ตั้งค่าหน้าเพจและ CSS (สู้ Dark Mode + ปรับปุ่มให้เด่นขึ้น)
+# 1. ตั้งค่าหน้าเพจและ CSS 
 # ==========================================
 st.set_page_config(page_title="IV Compatibility Dashboard | DIS Nakornping", layout="wide", initial_sidebar_state="collapsed")
 
@@ -12,56 +12,26 @@ st.markdown("""
     <style>
     .stApp { background-color: #f4f7f9; }
     .main .block-container { padding: 1rem 0.5rem; }
-
-    /* Header โรงพยาบาล */
     .header-banner { background-color: #004080; color: white; padding: 20px 30px; border-radius: 8px; margin-bottom: 15px; border-bottom: 4px solid #e11d48; }
     .header-banner h1 { margin: 0; font-size: 1.8rem; font-weight: 700; color: white !important; }
     .header-banner p { margin: 5px 0 0 0; font-size: 1rem; opacity: 0.9; color: white !important; }
-    
-    /* กล่องคำอธิบายสัญลักษณ์ (Legend) */
     .legend-box { background-color: white; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 20px; font-size: 0.95rem; color: #0f172a !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     .legend-item { display: flex; align-items: flex-start; margin-bottom: 8px; }
     .legend-color { min-width: 18px; height: 18px; border-radius: 4px; margin-right: 10px; margin-top: 3px; border: 1px solid rgba(0,0,0,0.1); }
     .legend-text { color: #0f172a !important; line-height: 1.4; }
-
-    /* กล่องแผงควบคุมหลัก */
     .panel-box { background-color: white; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-
-    /* กล่องชื่อคู่ยา */
     .pair-title-box { background-color: #e2e8f0 !important; color: #0f172a !important; padding: 15px; border-radius: 8px; text-align: center; font-size: 1.3rem; font-weight: 900; border-bottom: 4px solid #004080; margin-top: 20px; margin-bottom: 15px; }
-
-    /* ป้ายสถานะ */
     .status-badge { display: block; padding: 12px; font-weight: 800; font-size: 1.1rem; border-radius: 8px; text-align: center; margin-bottom: 2px; }
     .bg-green { background-color: #ecfdf5 !important; color: #059669 !important; border: 2px solid #34d399; }
     .bg-red { background-color: #fef2f2 !important; color: #dc2626 !important; border: 2px solid #f87171; }
     .bg-yellow { background-color: #fefce8 !important; color: #b45309 !important; border: 2px solid #fbbf24; }
     .bg-gray { background-color: #f8fafc !important; color: #64748b !important; border: 2px solid #cbd5e1; }
-    
-    /* กล่องคำแนะนำ */
     .advice-container { padding: 15px; border-radius: 0 0 8px 8px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 15px; border: 2px solid transparent; border-top: none; }
     .advice-container b, .advice-container span, .advice-container div { color: #0f172a !important; } 
     .advice-red { background-color: #fff1f2 !important; border-color: #f87171 !important; color: #0f172a !important; }
     .advice-yellow { background-color: #fffbeb !important; border-color: #fbbf24 !important; color: #0f172a !important; }
-    
-    /* 🛠️ ปุ่มวิเคราะห์ (ปรับให้มีมิติ มองหาง่ายขึ้น แต่ไม่รก) */
-    .analyze-btn > button { 
-        background-color: #004080 !important; 
-        color: white !important; 
-        font-weight: bold; 
-        width: 100%; 
-        padding: 16px; 
-        border-radius: 10px; 
-        border: none; 
-        font-size: 1.25rem; 
-        margin-top: 15px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.15); /* เพิ่มเงาบางๆ */
-        transition: all 0.2s ease-in-out; 
-    }
-    .analyze-btn > button:hover {
-        background-color: #002b5e !important;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.2); /* เงาชัดขึ้นตอนชี้เมาส์ */
-        transform: translateY(-2px); /* ปุ่มลอยขึ้นนิดๆ */
-    }
+    .analyze-btn > button { background-color: #004080 !important; color: white !important; font-weight: bold; width: 100%; padding: 16px; border-radius: 10px; border: none; font-size: 1.25rem; margin-top: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: all 0.2s ease-in-out; }
+    .analyze-btn > button:hover { background-color: #002b5e !important; box-shadow: 0 6px 12px rgba(0,0,0,0.2); transform: translateY(-2px); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -84,13 +54,6 @@ if 'd2_key' not in st.session_state: st.session_state.d2_key = PLACEHOLDER
 if 'd3_key' not in st.session_state: st.session_state.d3_key = PLACEHOLDER
 if 'd4_key' not in st.session_state: st.session_state.d4_key = PLACEHOLDER
 if 'd5_key' not in st.session_state: st.session_state.d5_key = FLUID_PLACEHOLDER
-
-def set_quick(a, b, fluid=FLUID_PLACEHOLDER):
-    st.session_state.d1_key = a
-    st.session_state.d2_key = b
-    st.session_state.d3_key = PLACEHOLDER
-    st.session_state.d4_key = PLACEHOLDER
-    st.session_state.d5_key = fluid
 
 @st.cache_data(ttl=30)
 def load_data():
@@ -145,7 +108,7 @@ st.markdown("""
         </div>
         <div class="legend-item">
             <div class="legend-color bg-yellow"></div>
-            <span class="legend-text"><b>🟡 สีเหลือง (Variable result):</b> มีเงื่อนไขเฉพาะทำให้ผลไม่แน่นอน (แปรผันตามความเข้มข้น, pH หรือเวลา)</span>
+            <span class="legend-text"><b>🟡 สีเหลือง (Variable result):</b> ไม่แนะนำให้ใช้เนื่องจากผลไม่แน่นอน (แปรผันตามความเข้มข้น, pH หรือเวลา)</span>
         </div>
         <div class="legend-item">
             <div class="legend-color bg-green"></div>
@@ -178,7 +141,6 @@ if df is not None:
         d5_sel = st.selectbox("💧 สารน้ำหลัก / สารละลาย (Base Solution)", list(FLUID_MAPPING.keys()), key="d5_key")
     
     st.markdown('<div class="analyze-btn">', unsafe_allow_html=True)
-    # 🛠️ เปลี่ยนข้อความและใส่ไอคอนให้ปุ่มดูชัดเจนขึ้น
     check = st.button("🔍 ประมวลผลความเข้ากันได้", use_container_width=True)
     st.markdown('</div></div>', unsafe_allow_html=True)
 
@@ -234,7 +196,7 @@ if df is not None:
                         st.markdown(f'<div class="advice-container {adv_cls}">{full_txt}</div>', unsafe_allow_html=True)
                     
                     elif adv_cls == "advice-yellow":
-                        default_yellow_msg = "โปรดตรวจสอบเงื่อนไขเฉพาะ: ความเข้มข้น, ค่าความเป็นกรด-ด่าง (pH), หรือระยะเวลาในการให้ยา"
+                        default_yellow_msg = "ไม่แนะนำให้ใช้ เนื่องจากผลลัพธ์ไม่แน่นอน"
                         full_txt = f"<b>💡 คำแนะนำ :</b> {sheet_advice if sheet_advice else default_yellow_msg}"
                         
                         for dn in drug_names:
@@ -246,26 +208,5 @@ if df is not None:
                 st.markdown('<hr style="margin: 15px 0; border-color: #f1f5f9;">', unsafe_allow_html=True)
                 render_route("IV Admixture (ผสมถุง)", ["I", "U", "C"], [p1, p2])
                 st.markdown('</div>', unsafe_allow_html=True)
-
-    with st.expander("⚡ คู่ยาที่พบบ่อย (Quick Select)"):
-        st.button("🚨 Calcium gluconate + Sodium bicarbonate", 
-                  on_click=set_quick, 
-                  args=("Calcium gluconate", "Sodium bicarbonate", FLUID_PLACEHOLDER), 
-                  use_container_width=True)
-        
-        st.button("🚨 Midazolam + Furosemide", 
-                  on_click=set_quick, 
-                  args=("Midazolam", "Furosemide", FLUID_PLACEHOLDER), 
-                  use_container_width=True)
-        
-        st.button("🚨 Phenytoin + D5W", 
-                  on_click=set_quick, 
-                  args=("Phenytoin", PLACEHOLDER, "Dextrose/water (D5W)"), 
-                  use_container_width=True)
-        
-        st.button("🚨 Amiodarone + Heparin sodium", 
-                  on_click=set_quick, 
-                  args=("Amiodarone", "Heparin sodium", FLUID_PLACEHOLDER), 
-                  use_container_width=True)
 
 st.markdown('<p style="text-align:center; color:#94a3b8; font-size:0.8rem; margin-top:20px;">งานเภสัชสนเทศ (DIS) โรงพยาบาลนครพิงค์</p>', unsafe_allow_html=True)
