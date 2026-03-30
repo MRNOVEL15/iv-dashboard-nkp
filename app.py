@@ -95,7 +95,7 @@ df, drug_notes, status = load_data()
 st.markdown("""
     <div class="header-banner">
         <h1>🏥 IV Compatibility Dashboard</h1>
-        <p>เภสัชสนเทศ กลุ่มงานเภสัชกรรม โรงพยาบาลนครพิงค์</p>
+        <p>งานเภสัชสนเทศ กลุ่มงานเภสัชกรรม โรงพยาบาลนครพิงค์</p>
     </div>
 """, unsafe_allow_html=True)
 
