@@ -18,9 +18,20 @@ st.markdown("""
     .header-banner h1 { margin: 0; font-size: 1.8rem; font-weight: 700; color: white !important; }
     .header-banner p { margin: 5px 0 0 0; font-size: 1rem; opacity: 0.9; color: white !important; }
     
-    /* CSS สำหรับหน้าคู่มือ (How to use) */
-    .howto-box { background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 5px solid #0ea5e9; margin-bottom: 10px; font-size: 0.95rem; }
-    .howto-step { font-weight: bold; color: #0284c7; font-size: 1.1rem; margin-bottom: 5px; }
+    /* 🛠️ ปรับแต่งปุ่ม คู่มือการใช้งาน ให้เด่นชัดและไม่กลืนกับพื้นหลัง */
+    [data-testid="stExpander"] summary {
+        background-color: #e0f2fe !important;
+        border: 2px solid #0284c7 !important;
+        border-radius: 8px !important;
+        color: #0369a1 !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        padding: 12px 15px !important;
+        transition: all 0.2s ease-in-out;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: #bae6fd !important;
+    }
     
     /* กล่องคำอธิบายสัญลักษณ์ (Legend) */
     .legend-box { background-color: white; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 20px; font-size: 0.95rem; color: #0f172a !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -47,7 +58,7 @@ st.markdown("""
     .advice-red { background-color: #fff1f2 !important; border-color: #f87171 !important; color: #0f172a !important; }
     .advice-yellow { background-color: #fffbeb !important; border-color: #fbbf24 !important; color: #0f172a !important; }
     
-    /* 🛠️ ปุ่มวิเคราะห์ */
+    /* ปุ่มวิเคราะห์ */
     .analyze-btn > button { background-color: #004080 !important; color: white !important; font-weight: bold; width: 100%; padding: 16px; border-radius: 10px; border: none; font-size: 1.25rem; margin-top: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: all 0.2s ease-in-out; }
     .analyze-btn > button:hover { background-color: #002b5e !important; box-shadow: 0 6px 12px rgba(0,0,0,0.2); transform: translateY(-2px); }
     </style>
@@ -112,52 +123,18 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 💡 แทรกส่วน "คู่มือการใช้งาน" ไว้ใต้ Header
-with st.expander("📖 คลิกที่นี่เพื่อดู: คู่มือการใช้งานเบื้องต้นสำหรับพยาบาล (How to Use)", expanded=False):
-    st.markdown("### 📌 ขั้นตอนการตรวจสอบความเข้ากันได้ของยาฉีด")
-    
-    col_guide1, col_guide2 = st.columns(2)
-    
-    with col_guide1:
-        st.markdown("""
-        <div class="howto-box">
-            <div class="howto-step">1️⃣ เลือกตัวยาและสารน้ำ</div>
-            พิมพ์ชื่อยาหรือกดเลือกจากเมนูแบบ Dropdown สามารถเลือกยาฉีดได้สูงสุด 4 ชนิด และสารน้ำ 1 ชนิดพร้อมกัน
-        </div>
-        """, unsafe_allow_html=True)
-        # ใส่รูปประกอบขั้นตอนที่ 1 (ถ้ามีรูปให้เปลี่ยนชื่อไฟล์ตรงนี้)
-        try:
-            st.image("step1.png", caption="ภาพตัวอย่าง: การเลือกยาและสารน้ำ", use_container_width=True)
-        except:
-            st.info("🖼️ [พื้นที่สำหรับใส่รูปภาพประกอบที่ 1: นำรูป step1.png มาวางในโฟลเดอร์เดียวกับโปรแกรม]")
+# ==========================================
+# 💡 ส่วนของ "คู่มือการใช้งาน" (แสดงเฉพาะรูปภาพ)
+# ==========================================
+with st.expander("คลิกที่นี่เพื่อดู คู่มือการใช้งานเบื้องต้น(How to use)", expanded=False):
+    # เปลี่ยนชื่อไฟล์ในวงเล็บให้ตรงกับชื่อรูปภาพของคุณ
+    try:
+        # ใช้ use_container_width=True เพื่อให้รูปขยายพอดีกับกรอบ ไม่ล้นและไม่รก
+        st.image("guide.png", use_container_width=True) 
+    except:
+        st.info("🖼️ กรุณานำรูปภาพคู่มือ (ชื่อไฟล์ guide.png) มาวางไว้ในโฟลเดอร์เดียวกับโค้ดครับ")
 
-        st.markdown("""
-        <div class="howto-box" style="margin-top: 15px;">
-            <div class="howto-step">2️⃣ กดปุ่ม "ประมวลผล"</div>
-            กดปุ่มสีน้ำเงินด้านล่างสุด เพื่อให้ระบบตรวจสอบปฏิกิริยาของยาแบบ "จับคู่พบกันหมด"
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_guide2:
-        st.markdown("""
-        <div class="howto-box">
-            <div class="howto-step">3️⃣ วิธีอ่านผลลัพธ์ (แปรผล)</div>
-            ระบบจะแสดงผลแยกเป็น 2 กรณี คือ การให้ทาง <b>Y-Site</b> และการ <b>ผสมถุง (Admixture)</b> โดยใช้รหัสสีดังนี้:
-            <ul style="margin-top: 5px; color:#334155;">
-                <li>🔴 <b>สีแดง:</b> ห้ามผสม/ห้ามให้ร่วมกันเด็ดขาด (Incompatible)</li>
-                <li>🟡 <b>สีเหลือง:</b> ไม่แนะนำ เนื่องจากผลลัพธ์แปรผันตามเงื่อนไข (Variable)</li>
-                <li>🟢 <b>สีเขียว:</b> ให้ร่วมกันได้ (Compatible)</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        # ใส่รูปประกอบขั้นตอนที่ 3 (ถ้ามีรูปให้เปลี่ยนชื่อไฟล์ตรงนี้)
-        try:
-            st.image("step2.png", caption="ภาพตัวอย่าง: การอ่านผลการตรวจสอบและการแจ้งเตือน", use_container_width=True)
-        except:
-            st.info("🖼️ [พื้นที่สำหรับใส่รูปภาพประกอบที่ 2: นำรูป step2.png มาวางในโฟลเดอร์เดียวกับโปรแกรม]")
-
-    st.markdown("---")
-    st.markdown('🔗 **ต้องการข้อมูลเพิ่มเติม?** สามารถศึกษาฐานข้อมูลหรือระเบียบปฏิบัติฉบับเต็มได้ที่นี่: [เอกสารคู่มือ IV Compatibility โรงพยาบาลนครพิงค์ (คลิก)](#)')
+# ==========================================
 
 st.markdown("""
     <div class="legend-box">
